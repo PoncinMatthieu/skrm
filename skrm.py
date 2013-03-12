@@ -5,7 +5,7 @@ import getopt
 import sys
 import subprocess
 
-def ExitUsage(self, error=0, msg=""):
+def ExitUsage(error=0, msg=""):
     if error != 0:
         print("Error: " + msg)
     print("usage: ./skrm.py [OPTIONS] [COMMANDS]")
@@ -16,7 +16,7 @@ def ExitUsage(self, error=0, msg=""):
     print("COMMANDS:")
     print("\t--file=[FILENAME]: use the given file to read/store keyrings.")
     print("\t--recipient=[USER_ID_NAME]: set the user id name for gpg to get the key and encrypt the file.")
-    print("\t--passphrase=[MASTER_PASS]: set the master pass to use when encrypting or decrypting the file.")
+    print("\t--pass=[MASTER_PASS]: set the master pass to use when encrypting or decrypting the file.")
     print("\t--get: the option is used by default. Return keys matching the specified tags.")
     print("\t--tags=[TAG1:TAG2:TAG3]: set a list of tag to search or to set.")
     print("\t--add=[KEY]: add a key to the file with the specified tags.")
@@ -27,7 +27,7 @@ class KeyringManager:
     def __init__(self, argv):
         self.ReadUserPrefs()
         try:
-            opts, args = getopt.getopt(argv, "h", ["help", "file=", "get", "passphrase=", "add=", "tags=", "remove=", "recipient="])
+            opts, args = getopt.getopt(argv, "h", ["help", "file=", "get", "pass=", "add=", "tags=", "remove=", "recipient="])
         except getopt.GetoptError:
             ExitUsage(1, "Bad arguments.")
         for opt, arg in opts:
@@ -47,7 +47,7 @@ class KeyringManager:
             elif opt == "--remove":
                 self.command = "remove"
                 self.key = arg
-            elif opt == "--passphrase":
+            elif opt == "--pass":
                 self.passphrase = arg
             elif opt == "--recipient":
                 self.recipient = arg
@@ -75,7 +75,7 @@ class KeyringManager:
         args = ["gpg", "-dq", "--no-use-agent", "--passphrase", self.passphrase, self.filename]
         p = subprocess.Popen(args, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
         stdout, stderr = p.communicate(None)
-        if stdout == "":
+        if stdout == "" and stdout != "":
             print(stderr)
             exit(-1)
         return stdout.rstrip()
@@ -94,9 +94,10 @@ class KeyringManager:
 
     def ParseRaw(self, raw):
         bdd = []
-        keyrings = raw.split("\x03")
-        for keyring in keyrings:
-            bdd.append(keyring.split("\x02"))
+        if raw:
+            keyrings = raw.split("\x03")
+            for keyring in keyrings:
+                bdd.append(keyring.split("\x02"))
         return bdd
 
     def ParseBdd(self, bdd):
@@ -107,7 +108,7 @@ class KeyringManager:
             for j, tag in enumerate(keyring):
                 raw += tag
                 if j < (keyringLen - 1):
-                        raw += "\x02"
+                    raw += "\x02"
             if i < (bddLen - 1):
                 raw += "\x03"
         return raw
