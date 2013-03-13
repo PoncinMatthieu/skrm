@@ -72,7 +72,13 @@ class KeyringManager:
 
     # decript gpg file and return the content
     def LoadRawBdd(self):
-        args = ["gpg", "-dq", "--no-use-agent", "--passphrase", self.passphrase, self.filename]
+        args = ["gpg", "-dq"]
+        if self.passphrase:
+            args.append("--no-use-agent")
+            args.append("--passphrase")
+            args.append(self.passphrase)
+        args.append(self.filename)
+        #args = ["gpg", "-dq", "--no-use-agent", "--passphrase", self.passphrase, self.filename]
         p = subprocess.Popen(args, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
         stdout, stderr = p.communicate(None)
         if stdout == "" and stdout != "":
