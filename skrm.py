@@ -166,6 +166,6 @@ class KeyringManager:
         elif self.command == "remove":
             self.CommandRemove(bdd)
 
-
-keyringManager = KeyringManager(sys.argv[1:])
-keyringManager.Exec()
+if __name__=="__main__":
+    keyringManager = KeyringManager(sys.argv[1:])
+    keyringManager.Exec()
