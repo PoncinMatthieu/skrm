@@ -65,15 +65,18 @@ class KeyringManager:
         self.tags = []
         self.key = ""
         self.recipient = ""
-        f = open(self.userPrefFile, "r")
-        for line in f:
-            option = line.split("=")
-            option[1] = option[1].rstrip('\n')
-            if option[0][0] != '#':
-                if option[0] == "file":
-                    self.filename = option[1]
-                elif option[0] == "recipient":
-                    self.recipient = option[1]
+        try:
+            f = open(self.userPrefFile, "r")
+            for line in f:
+                option = line.split("=")
+                option[1] = option[1].rstrip('\n')
+                if option[0][0] != '#':
+                    if option[0] == "file":
+                        self.filename = option[1]
+                    elif option[0] == "recipient":
+                        self.recipient = option[1]
+        except IOError: # use preffs not found
+            pass
 
     # decript gpg file and return the content
     def LoadRawBdd(self):
