@@ -4,30 +4,33 @@ import os
 import getopt
 import sys
 import subprocess
+import re
 
 def ExitUsage(error=0, msg=""):
     if error != 0:
         print("Error: " + msg)
-    print("usage: ./skrm.py [OPTIONS] [COMMANDS]")
+    print("usage: ./skrm.py [OPTIONS] [COMMANDS] [TAGS]")
     print("skrm stands for simple keyring manager, it store keys with tags into a file encrypted using gpg.")
     print("skrm will ask for the master password to encrypt/decript the storing file.")
     print("OPTIONS:")
-    print("\t-h, --help: print usage.")
+    print("\t-h, --help: Print usage.")
+    print("\t-g, --get: Return keyrings matching strictly the given tags. This option is used by default.")
+    print("\t-s, --search: Return keyrings matching the given tags (tags are interpreted as a regex expression).")
     print("COMMANDS:")
     print("\t--file=[FILENAME]: use the given file to read/store keyrings.")
     print("\t--recipient=[USER_ID_NAME]: set the user id name for gpg to get the key and encrypt the file.")
     print("\t--pass=[MASTER_PASS]: set the master pass to use when encrypting or decrypting the file.")
-    print("\t--get: the option is used by default. Return keys matching the specified tags.")
-    print("\t--tags=[TAG1:TAG2:TAG3]: set a list of tag to search or to set.")
     print("\t--add=[KEY]: add a key to the file with the specified tags.")
     print("\t--remove=[KEYID]: remove the key using the key id.")
+    print("TAGS:")
+    print("\tA list of strings to define tags you want to use under the form: \"TAG1:TAG2:TAG3\".")
     sys.exit(error)
 
 class KeyringManager:
     def __init__(self, argv):
         self.ReadUserPrefs()
         try:
-            opts, args = getopt.getopt(argv, "h", ["help", "file=", "get", "pass=", "add=", "tags=", "remove=", "recipient="])
+            opts, args = getopt.getopt(argv, "hgs", ["help", "file=", "get", "search", "pass=", "add=", "remove=", "recipient="])
         except getopt.GetoptError:
             ExitUsage(1, "Bad arguments.")
         for opt, arg in opts:
@@ -35,12 +38,10 @@ class KeyringManager:
                 ExitUsage()
             elif opt == "--file":
                 self.filename = os.path.expanduser(arg)
-            elif opt == "--tags":
-                listTag = arg.split(":")
-                for tag in listTag:
-                    self.tags.append(tag)
-            elif opt == "--get":
+            elif opt in ("-g", "--get"):
                 self.command = "get"
+            elif opt in ("-s", "--search"):
+                self.command = "search"
             elif opt == "--add":
                 self.command = "add"
                 self.key = arg
@@ -51,6 +52,10 @@ class KeyringManager:
                 self.passphrase = arg
             elif opt == "--recipient":
                 self.recipient = arg
+        for arg in args:
+            listTag = arg.split(":")
+            for tag in listTag:
+                self.tags.append(tag)
 
     def ReadUserPrefs(self):
         self.userPrefFile = os.path.expanduser("~/.skrm/user.prefs")
@@ -123,8 +128,20 @@ class KeyringManager:
         raw = self.ParseBdd(bdd)
         self.SaveRawBdd(raw)
 
-    def CommandGet(self, bdd):
-        print("GET")
+    def GetFonctor(self, keyring, tag):
+        for t in keyring:
+            if tag.upper() == t.upper():
+                return 1
+        return 0
+
+    def SearchFonctor(self, keyring, tag):
+        p = re.compile(tag.upper())
+        for t in keyring:
+            if p.search(t.upper()) != None:
+                return 1
+        return 0
+
+    def PrintMatchingKeyrings(self, bdd, Functor):
         for i, keyring in enumerate(bdd):
             if len(self.tags) == 0:
                 print(i),
@@ -133,16 +150,20 @@ class KeyringManager:
             else:
                 foundAll = 1
                 for tag in self.tags:
-                    found = 0
-                    for t in keyring:
-                        if tag.upper() == t.upper():
-                            found = 1
-                    if found == 0:
+                    if Functor(keyring, tag) == 0:
                         foundAll = 0
                 if foundAll == 1:
                     print(i),
                     print(":"),
                     print(keyring)
+
+    def CommandGet(self, bdd):
+        print("GET")
+        self.PrintMatchingKeyrings(bdd, self.GetFonctor)
+
+    def CommandSearch(self, bdd):
+        print("SEARCH")
+        self.PrintMatchingKeyrings(bdd, self.SearchFonctor)
 
     def CommandAdd(self, bdd):
         newKeyring = self.tags
@@ -161,6 +182,8 @@ class KeyringManager:
         bdd = self.ParseRaw(rawBdd)
         if self.command == "get":
             self.CommandGet(bdd)
+        if self.command == "search":
+            self.CommandSearch(bdd)
         elif self.command == "add":
             self.CommandAdd(bdd)
         elif self.command == "remove":
