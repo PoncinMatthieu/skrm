@@ -22,6 +22,7 @@ def ExitUsage(error=0, msg=""):
     print("\t--pass=[MASTER_PASS]: set the master pass to use when encrypting or decrypting the file.")
     print("\t--add=[KEY]: add a key to the file with the specified tags.")
     print("\t--remove=[KEYID]: remove the key using the key id.")
+    print("\t--backup=[HOSTDEST]: scp the bdd file to the given host destination.")
     print("TAGS:")
     print("\tA list of strings to define tags you want to use under the form: \"TAG1:TAG2:TAG3\".")
     sys.exit(error)
@@ -30,7 +31,7 @@ class KeyringManager:
     def __init__(self, argv):
         self.ReadUserPrefs()
         try:
-            opts, args = getopt.getopt(argv, "hgs", ["help", "file=", "get", "search", "pass=", "add=", "remove=", "recipient="])
+            opts, args = getopt.getopt(argv, "hgs", ["help", "file=", "get", "search", "pass=", "add=", "remove=", "recipient=", "backup="])
         except getopt.GetoptError:
             ExitUsage(1, "Bad arguments.")
         for opt, arg in opts:
@@ -52,6 +53,9 @@ class KeyringManager:
                 self.passphrase = arg
             elif opt == "--recipient":
                 self.recipient = arg
+            elif opt == "--backup":
+                self.command = "backup"
+                self.hostdest = arg
         for arg in args:
             listTag = arg.split(":")
             for tag in listTag:
@@ -75,7 +79,7 @@ class KeyringManager:
                         self.filename = option[1]
                     elif option[0] == "recipient":
                         self.recipient = option[1]
-        except IOError: # use preffs not found
+        except IOError: # use preffs not found, do nothing. args must be defined in command line arguments.
             pass
 
     # decript gpg file and return the content
@@ -180,17 +184,31 @@ class KeyringManager:
         self.SaveBdd(bdd)
         print("Remove OK")
 
+    def CommandBackup(self):
+        args = ["scp", self.filename, self.hostdest]
+        p = subprocess.Popen(args, stdin = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
+        stdout, stderr = p.communicate(None)
+        stderr = stderr.rstrip()
+        if stderr != "":
+            print(stderr)
+            print("Backup Failed!")
+            exit(-1)
+        print("Backup OK")
+
     def Exec(self):
-        rawBdd = self.LoadRawBdd()
-        bdd = self.ParseRaw(rawBdd)
-        if self.command == "get":
-            self.CommandGet(bdd)
-        if self.command == "search":
-            self.CommandSearch(bdd)
-        elif self.command == "add":
-            self.CommandAdd(bdd)
-        elif self.command == "remove":
-            self.CommandRemove(bdd)
+        if self.command == "backup":
+            self.CommandBackup()
+        else:
+            rawBdd = self.LoadRawBdd()
+            bdd = self.ParseRaw(rawBdd)
+            if self.command == "get":
+                self.CommandGet(bdd)
+            elif self.command == "search":
+                self.CommandSearch(bdd)
+            elif self.command == "add":
+                self.CommandAdd(bdd)
+            elif self.command == "remove":
+                self.CommandRemove(bdd)
 
 if __name__=="__main__":
     keyringManager = KeyringManager(sys.argv[1:])
