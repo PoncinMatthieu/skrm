@@ -2,7 +2,7 @@ skrm
 ====
 
 skrm stands for simple keyring manager.
-It is a python script developed for my pesonal use to store keys associated to tags into an encrypted file using GPG.
+It is a python script developed for my personal use to store keys associated to tags into an encrypted file using GPG.
 
 This is a very handy solution for unix users to store securely their passwords and retreive them quicky.
 
