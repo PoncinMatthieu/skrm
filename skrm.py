@@ -26,6 +26,7 @@ def ExitUsage(error=0, msg=""):
     print("\t--remove: remove the selected key.")
     print("\t--update=[KEY]: update the selected key.")
     print("\t--backup=[HOSTDEST]: scp the bdd file to the given host destination.")
+    print("\t--insert=[TAGID]: insert new tags on the selected keyring after the given KEYID.")
     print("TAGS:")
     print("\tA list of strings to define tags you want to use for any commands keyring related management.")
     sys.exit(error)
@@ -34,9 +35,9 @@ class KeyringManager:
     def __init__(self, argv):
         self.ReadUserPrefs()
         try:
-            opts, args = getopt.getopt(argv, "hgsc", ["help", "file=", "get", "search", "pass=", "add=", "select=", "remove", "update=", "recipient=", "backup=", "clip"])
+            opts, args = getopt.getopt(argv, "hgsc", ["help", "file=", "get", "search", "pass=", "add=", "select=", "remove", "update=", "recipient=", "backup=", "clip", "insert="])
         except getopt.GetoptError:
-            ExitUsage(1, "Bad arguments.")
+            ExitUsage(-1, "Bad arguments.")
         for opt, arg in opts:
             if opt in ("-h", "--help"):
                 ExitUsage()
@@ -52,6 +53,8 @@ class KeyringManager:
             elif opt == "--select":
                 if arg.isdigit():
                     self.keyId = int(arg)
+                else:
+                    ExitUsage(-1, "The given keyid is not a number.")
             elif opt == "--remove":
                 self.command = "remove"
             elif opt == "--update":
@@ -66,6 +69,12 @@ class KeyringManager:
                 self.hostdest = arg
             elif opt in ("-c", "--clip"):
                 self.clip = 1
+            elif opt == "--insert":
+                self.command = "insert"
+                if arg.isdigit():
+                    self.tagId = int(arg)
+                else:
+                    ExitUsage(-1, "The given tagid is not a number.")
         for arg in args:
             self.tags.append(arg)
 
@@ -208,16 +217,14 @@ class KeyringManager:
 
     def CommandRemove(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
-            print("Wrong argument, the given key id must be a valid number.")
-            exit(-1)
+            ExitUsage(-1, "Wrong argument, the given key id must be a valid number.")
         del bdd[self.keyId];
         self.SaveBdd(bdd)
         print("Remove OK")
 
     def CommandUpdate(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
-            print("Wrong argument, the given key id must be a valid number.")
-            exit(-1)
+            ExitUsage(-1, "Wrong argument, the given key id must be a valid number.")
         bdd[self.keyId][len(bdd[self.keyId]) - 1] = self.key;
         self.SaveBdd(bdd)
         print("Update OK")
@@ -232,6 +239,18 @@ class KeyringManager:
             print("Backup Failed!")
             exit(-1)
         print("Backup OK")
+
+    def CommandInsert(self, bdd):
+        if (self.keyId < 0 or self.keyId >= len(bdd)):
+            ExitUsage(-1, "Wrong argument, the given key id must be a valid number.")
+        tagIdMaxLen = len(bdd[self.keyId]) - 1;
+        if (self.tagId < 0 or self.tagId >= tagIdMaxLen):
+            ExitUsage(-1, "Wrong argument, the given tag id must be a valid number.")
+        bdd[self.keyId][self.tagId:self.tagId] = self.tags
+        print("New keyring: "),
+        print(bdd[self.keyId])
+        self.SaveBdd(bdd)
+        print("Insert OK")
 
     def Exec(self):
         if self.command == "backup":
@@ -249,6 +268,8 @@ class KeyringManager:
                 self.CommandRemove(bdd)
             elif self.command == "update":
                 self.CommandUpdate(bdd)
+            elif self.command == "insert":
+                self.CommandInsert(bdd)
 
 if __name__=="__main__":
     keyringManager = KeyringManager(sys.argv[1:])
