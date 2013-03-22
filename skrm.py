@@ -16,6 +16,7 @@ def ExitUsage(error=0, msg=""):
     print("\t-h, --help: Print usage.")
     print("\t-g, --get: Return keyrings matching strictly the given tags. This option is used by default. If a keyId is selected, a get or search return only the keyring matching the keyId.")
     print("\t-s, --search: Return keyrings matching the given tags (tags are interpreted as a regex expression).")
+    print("\t-c, --clip: Copy the key of the last matched keyring from a get or a search into the clipboard using xclip. Nothing will be printed out to the shell.")
     print("COMMANDS:")
     print("\t--file=[FILENAME]: use the given file to read/store keyrings.")
     print("\t--recipient=[USER_ID_NAME]: set the user id name for gpg to get the key and encrypt the file.")
@@ -33,7 +34,7 @@ class KeyringManager:
     def __init__(self, argv):
         self.ReadUserPrefs()
         try:
-            opts, args = getopt.getopt(argv, "hgs", ["help", "file=", "get", "search", "pass=", "add=", "select=", "remove", "update=", "recipient=", "backup="])
+            opts, args = getopt.getopt(argv, "hgsc", ["help", "file=", "get", "search", "pass=", "add=", "select=", "remove", "update=", "recipient=", "backup=", "clip"])
         except getopt.GetoptError:
             ExitUsage(1, "Bad arguments.")
         for opt, arg in opts:
@@ -63,6 +64,8 @@ class KeyringManager:
             elif opt == "--backup":
                 self.command = "backup"
                 self.hostdest = arg
+            elif opt in ("-c", "--clip"):
+                self.clip = 1
         for arg in args:
             self.tags.append(arg)
 
@@ -75,6 +78,7 @@ class KeyringManager:
         self.key = ""
         self.keyId = -1
         self.recipient = ""
+        self.clip = 0
         try:
             f = open(self.userPrefFile, "r")
             for line in f:
@@ -158,6 +162,16 @@ class KeyringManager:
                     return 1
         return 0
 
+    def PrintKeyring(self, i, keyring):
+        if self.clip == 0: # print the keyring
+            print(i),
+            print(":"),
+            print(keyring)
+        else: # copy the keyring to the clipboard
+            args = ["xclip"]
+            p = subprocess.Popen(args, stdin = subprocess.PIPE)
+            p.communicate(keyring[len(keyring) - 1])
+
     def PrintMatchingKeyrings(self, bdd, Functor):
         if self.keyId >= 0:
             print(self.keyId),
@@ -175,9 +189,7 @@ class KeyringManager:
                         if Functor(keyring, tag) == 0:
                             foundAll = 0
                     if foundAll == 1:
-                        print(i),
-                        print(":"),
-                        print(keyring)
+                        self.PrintKeyring(i, keyring)
 
     def CommandGet(self, bdd):
         print("GET")
