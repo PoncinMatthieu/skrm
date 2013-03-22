@@ -43,19 +43,25 @@ Usage
 
 Examples
 --------
-To add a new key with the associated tags: Password WebSite Facebook MyUserName
+To add a new key with the associated tags: Password WebSite Twitter MyUserName
 
     skrm --add="myPass" Password WebSite Twitter MyUserName
 
-To get one or multiple keys, you only need to specifie the tags you want to match
+To get one or multiple keys, you only need to specifie the tags you want to match.
+The tags are not case sensitive.
 
-    skrm Passwork
+    skrm twitter
     -> 0 : ['Password', 'WebSite', 'Twitter', 'MyUserName', 'myPass']
 
 If you don't remmember the exact string for your tags, you can use the option -s
 
-    skrm -s pass
+    skrm -s twit
     -> 0 : ['Password', 'WebSite', 'Twitter', 'MyUserName', 'myPass']
+
+To copy directly your key into the clipboard
+
+    skrm -c twitter
+    -> copy the key into the clipboard.
 
 To select a keyring, you must use it's key id
 
