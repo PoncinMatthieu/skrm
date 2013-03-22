@@ -9,7 +9,7 @@ import re
 def ExitUsage(error=0, msg=""):
     if error != 0:
         print("Error: " + msg)
-    print("usage: ./skrm.py [OPTIONS] [COMMANDS] [TAGS]")
+    print("usage: ./skrm [OPTIONS] [COMMANDS] [TAGS]")
     print("skrm stands for simple keyring manager, it store keys with tags into a file encrypted using gpg.")
     print("skrm will ask for the master password to encrypt/decript the storing file.")
     print("OPTIONS:")
@@ -218,6 +218,8 @@ class KeyringManager:
     def CommandRemove(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
             ExitUsage(-1, "Wrong argument, the given key id must be a valid number.")
+        print("Removing: "),
+        print(bdd[self.keyId])
         del bdd[self.keyId];
         self.SaveBdd(bdd)
         print("Remove OK")
@@ -226,6 +228,8 @@ class KeyringManager:
         if (self.keyId < 0 or self.keyId >= len(bdd)):
             ExitUsage(-1, "Wrong argument, the given key id must be a valid number.")
         bdd[self.keyId][len(bdd[self.keyId]) - 1] = self.key;
+        print("New keyring: "),
+        print(bdd[self.keyId])
         self.SaveBdd(bdd)
         print("Update OK")
 
