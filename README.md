@@ -53,7 +53,7 @@ The tags are not case sensitive.
     skrm twitter
     -> 0 : ['Password', 'WebSite', 'Twitter', 'MyUserName', 'myPass']
 
-If you don't remmember the exact string for your tags, you can use the option -s
+If you don't remember the exact string for your tags, you can use the option -s
 
     skrm -s twit
     -> 0 : ['Password', 'WebSite', 'Twitter', 'MyUserName', 'myPass']
