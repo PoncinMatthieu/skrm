@@ -1,10 +1,12 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import os
 import getopt
 import sys
 import subprocess
 import re
+
 
 def exit_with_usage(error=0, msg=""):
     if error != 0:
@@ -132,22 +134,24 @@ class KeyringManager:
     def parse_raw(self, raw):
         bdd = []
         if raw:
-            keyrings = raw.split("\x03")
+            keyrings = raw.split(b"\x03")
             for keyring in keyrings:
-                bdd.append(keyring.split("\x02"))
+                bdd.append(keyring.split(b"\x02"))
         return bdd
 
     def parse_bdd(self, bdd):
-        raw = ""
+        raw = b""
         bddLen = len(bdd)
         for i, keyring in enumerate(bdd):
             keyringLen = len(keyring)
             for j, tag in enumerate(keyring):
+                if isinstance(tag, str):
+                    tag = bytes(tag, 'utf8')
                 raw += tag
                 if j < (keyringLen - 1):
-                    raw += "\x02"
+                    raw += b"\x02"
             if i < (bddLen - 1):
-                raw += "\x03"
+                raw += b"\x03"
         return raw
 
     def save_bdd(self, bdd):
@@ -158,7 +162,7 @@ class KeyringManager:
         keyringLen = len(keyring)
         for i, t in enumerate(keyring):
             if i < (keyringLen - 1):
-                if tag.upper() == t.upper():
+                if tag.upper() == t.upper().decode('utf8'):
                     return 1
         return 0
 
@@ -167,14 +171,14 @@ class KeyringManager:
         p = re.compile(tag.upper())
         for i, t in enumerate(keyring):
             if i < (keyringLen - 1):
-                if p.search(t.upper()) != None:
+                if p.search(t.upper().decode('utf8')) != None:
                     return 1
         return 0
 
     def print_keyring(self, i, keyring):
         if self.clip == 0: # print the keyring
-            print(i),
-            print(":"),
+            print(i, end='')
+            print(":", end='')
             print(keyring)
         else: # copy the keyring to the clipboard
             from sys import platform as _platform
@@ -194,14 +198,14 @@ class KeyringManager:
 
     def print_matching_keyrings(self, bdd, Functor):
         if self.keyId >= 0:
-            print(self.keyId),
-            print(":"),
+            print(self.keyId, end='')
+            print(":", end='')
             print(bdd[self.keyId])
         else:
             for i, keyring in enumerate(bdd):
                 if len(self.tags) == 0:
-                    print(i),
-                    print(":"),
+                    print(i, end='')
+                    print(":", end='')
                     print(keyring)
                 else:
                     foundAll = 1
@@ -229,7 +233,7 @@ class KeyringManager:
     def command_remove(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
             exit_with_usage(-1, "Wrong argument, the given key id must be a valid number.")
-        print("Removing: "),
+        print("Removing: ", end='')
         print(bdd[self.keyId])
         del bdd[self.keyId];
         self.save_bdd(bdd)
@@ -239,7 +243,7 @@ class KeyringManager:
         if (self.keyId < 0 or self.keyId >= len(bdd)):
             exit_with_usage(-1, "Wrong argument, the given key id must be a valid number.")
         bdd[self.keyId][len(bdd[self.keyId]) - 1] = self.key;
-        print("New keyring: "),
+        print("New keyring: ", end='')
         print(bdd[self.keyId])
         self.save_bdd(bdd)
         print("Update OK")
@@ -262,7 +266,7 @@ class KeyringManager:
         if (self.tagId < 0 or self.tagId >= tag_id_max_len):
             exit_with_usage(-1, "Wrong argument, the given tag id must be a valid number.")
         bdd[self.keyId][self.tagId:self.tagId] = self.tags
-        print("New keyring: "),
+        print("New keyring: ", end='')
         print(bdd[self.keyId])
         self.save_bdd(bdd)
         print("Insert OK")
@@ -286,6 +290,8 @@ class KeyringManager:
             elif self.command == "insert":
                 self.command_insert(bdd)
 
+
+keyring_manager = KeyringManager(sys.argv[1:])
+
 if __name__=="__main__":
-    keyring_manager = KeyringManager(sys.argv[1:])
     keyring_manager.run()
