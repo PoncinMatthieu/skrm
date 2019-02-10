@@ -1,4 +1,3 @@
-#!/usr/bin/python
 
 from __future__ import print_function
 import os
@@ -28,18 +27,18 @@ def exit_with_usage(error=0, msg=""):
     print("\t--remove: remove the selected key.")
     print("\t--update=[KEY]: update the selected key.")
     print("\t--backup=[HOSTDEST]: scp the bdd file to the given host destination.")
-    print("\t--insert=[TAGID]: insert new tags on the selected keyring after the given KEYID.")
     print("TAGS:")
     print("\tA list of strings to define tags you want to use for any commands keyring related management.")
     sys.exit(error)
 
+
 class KeyringManager:
-    def __init__(self, argv):
-        self.read_user_prefs()
+    def __init__(self, user_pref_path, bdd_path, argv):
+        self.read_user_prefs(user_pref_path, bdd_path)
         try:
-            opts, args = getopt.getopt(argv, "hgsc", ["help", "file=", "get", "search", "pass=", "add=", "select=", "remove", "update=", "recipient=", "backup=", "clip", "insert="])
+            opts, args = getopt.getopt(argv, "hgsc", ["help", "file=", "get", "search", "pass=", "add=", "select=", "remove", "update=", "recipient=", "backup=", "clip"])
         except getopt.GetoptError:
-            exit_with_usage(-1, "Bad arguments.")
+            exit_with_usage(1, "Bad arguments.")
         for opt, arg in opts:
             if opt in ("-h", "--help"):
                 exit_with_usage()
@@ -56,7 +55,7 @@ class KeyringManager:
                 if arg.isdigit():
                     self.keyId = int(arg)
                 else:
-                    exit_with_usage(-1, "The given keyid is not a number.")
+                    exit_with_usage(1, "The given keyid is not a number.")
             elif opt == "--remove":
                 self.command = "remove"
             elif opt == "--update":
@@ -71,18 +70,12 @@ class KeyringManager:
                 self.hostdest = arg
             elif opt in ("-c", "--clip"):
                 self.clip = 1
-            elif opt == "--insert":
-                self.command = "insert"
-                if arg.isdigit():
-                    self.tagId = int(arg)
-                else:
-                    exit_with_usage(-1, "The given tagid is not a number.")
         for arg in args:
             self.tags.append(arg)
 
-    def read_user_prefs(self):
-        user_pref_file = os.path.expanduser("~/.skrm/user.prefs")
-        self.filename = os.path.expanduser("~/.skrm/bdd.gpg")
+    def read_user_prefs(self, user_pref_path, bdd_path):
+        user_pref_file = user_pref_path
+        self.filename = bdd_path
         self.command = "get"
         self.passphrase = ""
         self.tags = []
@@ -91,15 +84,15 @@ class KeyringManager:
         self.recipient = ""
         self.clip = 0
         try:
-            f = open(user_pref_file, "r")
-            for line in f:
-                option = line.split("=")
-                option[1] = option[1].rstrip('\n')
-                if option[0][0] != '#':
-                    if option[0] == "file":
-                        self.filename = option[1]
-                    elif option[0] == "recipient":
-                        self.recipient = option[1]
+            with open(user_pref_file, "r") as f:
+                for line in f:
+                    option = line.split("=")
+                    option[1] = option[1].rstrip('\n')
+                    if option[0][0] != '#':
+                        if option[0] == "file":
+                            self.filename = option[1]
+                        elif option[0] == "recipient":
+                            self.recipient = option[1]
         except IOError: # use preffs not found, do nothing. args must be defined in command line arguments.
             pass
 
@@ -111,17 +104,16 @@ class KeyringManager:
             args.append("--passphrase")
             args.append(self.passphrase)
         args.append(self.filename)
-        #args = ["gpg", "-dq", "--no-use-agent", "--passphrase", self.passphrase, self.filename]
         p = subprocess.Popen(args, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
         stdout, stderr = p.communicate(None)
         if stdout == "" and stdout != "":
             print(stderr)
-            exit(-1)
+            exit(1)
         return stdout.rstrip()
 
     def save_raw_bdd(self, raw):
         """ Encript gpg file """
-        args = ["gpg", "-e", "-r", self.recipient, "-o", self.filename]
+        args = ["gpg", "--yes", "-e", "-r", self.recipient, "-o", self.filename]
         p = subprocess.Popen(args, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
         stdout, stderr = p.communicate(raw)
         stdout = stdout.rstrip()
@@ -182,18 +174,15 @@ class KeyringManager:
             print(keyring)
         else: # copy the keyring to the clipboard
             from sys import platform as _platform
-            if _platform == "linux" or _platform == "linux2":
-                # linux
+            if _platform == "linux" or _platform == "linux2": # linux
                 args = ["xclip"]
                 p = subprocess.Popen(args, stdin = subprocess.PIPE)
                 p.communicate(keyring[len(keyring) - 1])
-            elif _platform == "darwin":
-                # OS X
+            elif _platform == "darwin": # OS X
                 args = ["pbcopy"]
                 p = subprocess.Popen(args, stdin = subprocess.PIPE)
                 p.communicate(keyring[len(keyring) - 1])
-            elif _platform == "win32":
-                # Windows...
+            elif _platform == "win32": # Windows
                 print("Can't copy on clipboard under windows, method not implemented!")
 
     def print_matching_keyrings(self, bdd, Functor):
@@ -232,7 +221,7 @@ class KeyringManager:
 
     def command_remove(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
-            exit_with_usage(-1, "Wrong argument, the given key id must be a valid number.")
+            exit_with_usage(1, "Wrong argument, the given key id must be a valid number.")
         print("Removing: ", end='')
         print(bdd[self.keyId])
         del bdd[self.keyId];
@@ -241,7 +230,7 @@ class KeyringManager:
 
     def command_update(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
-            exit_with_usage(-1, "Wrong argument, the given key id must be a valid number.")
+            exit_with_usage(1, "Wrong argument, the given key id must be a valid number.")
         bdd[self.keyId][len(bdd[self.keyId]) - 1] = self.key;
         print("New keyring: ", end='')
         print(bdd[self.keyId])
@@ -256,20 +245,8 @@ class KeyringManager:
         if stderr != "":
             print(stderr)
             print("Backup Failed!")
-            exit(-1)
+            exit(1)
         print("Backup OK")
-
-    def command_insert(self, bdd):
-        if (self.keyId < 0 or self.keyId >= len(bdd)):
-            exit_with_usage(-1, "Wrong argument, the given key id must be a valid number.")
-        tag_id_max_len = len(bdd[self.keyId]) - 1;
-        if (self.tagId < 0 or self.tagId >= tag_id_max_len):
-            exit_with_usage(-1, "Wrong argument, the given tag id must be a valid number.")
-        bdd[self.keyId][self.tagId:self.tagId] = self.tags
-        print("New keyring: ", end='')
-        print(bdd[self.keyId])
-        self.save_bdd(bdd)
-        print("Insert OK")
 
     def run(self):
         if self.command == "backup":
@@ -287,11 +264,3 @@ class KeyringManager:
                 self.command_remove(bdd)
             elif self.command == "update":
                 self.command_update(bdd)
-            elif self.command == "insert":
-                self.command_insert(bdd)
-
-
-keyring_manager = KeyringManager(sys.argv[1:])
-
-if __name__=="__main__":
-    keyring_manager.run()

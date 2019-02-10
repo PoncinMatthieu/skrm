@@ -1,4 +1,4 @@
-skrm
+skrm [![Coverage Status](https://coveralls.io/repos/github/PoncinMatthieu/skrm/badge.svg?branch=master)](https://coveralls.io/github/PoncinMatthieu/skrm?branch=master)
 ====
 
 skrm stands for simple keyring manager.
@@ -36,7 +36,6 @@ Usage
         --remove: remove the selected key.
         --update=[KEY]: update the selected key.
         --backup=[HOSTDEST]: scp the bdd file to the given host destination.
-        --insert=[TAGID]: insert new tags on the selected keyring after the given KEYID.
     TAGS:
         A list of strings to define tags you want to use for any commands keyring related management.
 
@@ -84,3 +83,4 @@ To insert new tags to a keyring
 To backup your bdd file to a remote server using scp
 
     skrm --backup="myBackupServer:~/.skrm/"
+
