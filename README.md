@@ -6,7 +6,7 @@ It is a small python script allowing you to store keys associated to tags into a
 
 This is a very handy solution for unix users to store securely their passwords and retreive them quicky.
 
-INSTALL
+Install
 -------
 Use pip:
 ```
