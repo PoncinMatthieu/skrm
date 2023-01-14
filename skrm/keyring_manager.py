@@ -17,7 +17,7 @@ def exit_with_usage(error=0, msg=""):
     print("\t-h, --help: Print usage.")
     print("\t-g, --get: Return keyrings matching strictly the given tags. This option is used by default. If a keyId is selected, a get or a search return only the keyring matching the keyId.")
     print("\t-s, --search: Return keyrings matching the given tags (tags are interpreted as a regex expression).")
-    print("\t-c, --clip: Copy the key of the last matched keyring from a get or a search into the clipboard using xclip. Nothing will be printed out to the shell.")
+    print("\t-c, --clip: Copy the key of the last matched keyring from a get or a search into the clipboard. Nothing will be printed out to the shell.")
     print("COMMANDS:")
     print("\t--file=[FILENAME]: use the given file to read/store keyrings.")
     print("\t--recipient=[USER_ID_NAME]: set the user id name for gpg to get the key and encrypt the file.")
@@ -175,9 +175,13 @@ class KeyringManager:
         else: # copy the keyring to the clipboard
             from sys import platform as _platform
             if _platform == "linux" or _platform == "linux2": # linux
-                args = ["xclip"]
-                p = subprocess.Popen(args, stdin = subprocess.PIPE)
-                p.communicate(keyring[len(keyring) - 1])
+                # use klipper if on KDE
+                if os.environ.get("XDG_CURRENT_DESKTOP") == "KDE":
+                    os.system("qdbus org.kde.klipper /klipper setClipboardContents '" + keyring[len(keyring) - 1].decode("utf8") + "'")
+                else:
+                    args = ["xclip"]
+                    p = subprocess.Popen(args, stdin = subprocess.PIPE)
+                    p.communicate(keyring[len(keyring) - 1])
             elif _platform == "darwin": # OS X
                 args = ["pbcopy"]
                 p = subprocess.Popen(args, stdin = subprocess.PIPE)
