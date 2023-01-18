@@ -13,6 +13,25 @@ Use pip:
 pip install skrm
 ```
 
+## GPG setup on mac
+You will need to install gpg with:
+```
+brew install gpg
+```
+
+In order to work properly with skrm, you will need to setup a new pinentry:
+```
+brew install pinentry-mac
+echo "pinentry-program /opt/homebrew/bin/pinentry-mac" >> ~/.gnupg/gpg-agent.conf
+```
+
+Without a proper pinentry setup, skrm may exist with no error.
+to test if gpg is properly configured, you may try decrypting your bdd file with:
+```
+gpg -dq .skrm/bdd.gpg
+```
+
+
 User Prefs
 ----------
 skrm uses an optional configuration file to avoid you setting every options in the command line.
