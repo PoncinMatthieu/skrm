@@ -246,7 +246,7 @@ class KeyringManager:
         p = subprocess.Popen(args, stdin = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
         stdout, stderr = p.communicate(None)
         stderr = stderr.rstrip()
-        if stderr != "":
+        if stderr:
             print(stderr)
             print("Backup Failed!")
             exit(1)
