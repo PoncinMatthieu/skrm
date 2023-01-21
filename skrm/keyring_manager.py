@@ -27,6 +27,9 @@ def exit_with_usage(error=0, msg=""):
     print("\t--remove: remove the selected key.")
     print("\t--update=[KEY]: update the selected key.")
     print("\t--backup=[HOSTDEST]: scp the bdd file to the given host destination.")
+    print("\t--restore=[HOSTSRC]: scp the bdd file from the given host destination. YOU WILL LOOSE LOCAL DATA IF YOUR BACKUP IS CORRUPTED!")
+    print("\t-b, --quick-backup: backup bdd file to location in user.prefs.")
+    print("\t-r, --quick-restore: restore backup from location in user.prefs. YOU WILL LOOSE LOCAL DATA IF YOUR BACKUP IS CORRUPTED!")
     print("TAGS:")
     print("\tA list of strings to define tags you want to use for any commands keyring related management.")
     sys.exit(error)
@@ -36,7 +39,9 @@ class KeyringManager:
     def __init__(self, user_pref_path, bdd_path, argv):
         self.read_user_prefs(user_pref_path, bdd_path)
         try:
-            opts, args = getopt.getopt(argv, "hgsc", ["help", "file=", "get", "search", "pass=", "add=", "select=", "remove", "update=", "recipient=", "backup=", "clip"])
+            opts, args = getopt.getopt(argv, "hgscbr", ["help", "file=", "get", "search", "pass=", "add=", "select=",
+                                                      "remove", "update=", "recipient=", "backup=", "restore=", "clip",
+                                                      "quick-backup", "quick-restore"])
         except getopt.GetoptError:
             exit_with_usage(1, "Bad arguments.")
         for opt, arg in opts:
@@ -68,6 +73,13 @@ class KeyringManager:
             elif opt == "--backup":
                 self.command = "backup"
                 self.hostdest = arg
+            elif opt == "--restore":
+                self.command = "restore"
+                self.hostsrc = arg
+            elif opt in ("-b", "--quick-backup"):
+                self.command = "quick_backup"
+            elif opt in ("-r", "--quick-restore"):
+                self.command = "quick_restore"
             elif opt in ("-c", "--clip"):
                 self.clip = 1
         for arg in args:
@@ -83,6 +95,8 @@ class KeyringManager:
         self.keyId = -1
         self.recipient = ""
         self.clip = 0
+        self.backup_location = None
+        self.auto_backup = False
         try:
             with open(user_pref_file, "r") as f:
                 for line in f:
@@ -93,6 +107,10 @@ class KeyringManager:
                             self.filename = option[1]
                         elif option[0] == "recipient":
                             self.recipient = option[1]
+                        elif option[0] == "backup_location":
+                            self.backup_location = option[1]
+                        elif option[0] == "auto_backup":
+                            self.auto_backup = (option[1].lower() == "true")
         except IOError: # use preffs not found, do nothing. args must be defined in command line arguments.
             pass
 
@@ -106,22 +124,45 @@ class KeyringManager:
         args.append(self.filename)
         p = subprocess.Popen(args, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
         stdout, stderr = p.communicate(None)
+        if stderr:
+            print(stderr)
         if stdout == "" and stdout != "":
             print(stderr)
             exit(1)
         return stdout.rstrip()
 
-    def save_raw_bdd(self, raw):
+    def _save_raw_bdd(self, raw):
         """ Encript gpg file """
         args = ["gpg", "--yes", "-e", "-r", self.recipient, "-o", self.filename]
         p = subprocess.Popen(args, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
         stdout, stderr = p.communicate(raw)
         stdout = stdout.rstrip()
         stderr = stderr.rstrip()
-        if stdout != "":
+        if stdout:
             print(stdout)
-        if stderr != "":
+        if stderr:
             print(stderr)
+
+    def _scp(self, src, dst):
+        args = ["scp", src, dst]
+        print("Running backup with: " + str(args))
+        p = subprocess.Popen(args, stdin = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
+        stdout, stderr = p.communicate(None)
+        stderr = stderr.rstrip()
+        if stderr:
+            print(stderr)
+            print("Scp Failed with arguments: " + str(args))
+            exit(1)
+
+    def _backup(self, dst):
+        print("Backup...")
+        self._scp(self.filename, dst)
+        print("DONE")
+
+    def _restore(self, src):
+        print("Restore...")
+        self._scp(src, self.filename)
+        print("DONE")
 
     def parse_raw(self, raw):
         bdd = []
@@ -148,7 +189,9 @@ class KeyringManager:
 
     def save_bdd(self, bdd):
         raw = self.parse_bdd(bdd)
-        self.save_raw_bdd(raw)
+        self._save_raw_bdd(raw)
+        if self.auto_backup:
+            self._backup(self.backup_location)
 
     def get_fonctor(self, keyring, tag):
         keyringLen = len(keyring)
@@ -221,7 +264,7 @@ class KeyringManager:
         newKeyring.append(self.key)
         bdd.append(newKeyring)
         self.save_bdd(bdd)
-        print("Add OK")
+        print("Add DONE")
 
     def command_remove(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
@@ -230,7 +273,7 @@ class KeyringManager:
         print(bdd[self.keyId])
         del bdd[self.keyId];
         self.save_bdd(bdd)
-        print("Remove OK")
+        print("Remove DONE")
 
     def command_update(self, bdd):
         if (self.keyId < 0 or self.keyId >= len(bdd)):
@@ -239,22 +282,29 @@ class KeyringManager:
         print("New keyring: ", end='')
         print(bdd[self.keyId])
         self.save_bdd(bdd)
-        print("Update OK")
+        print("Update DONE")
 
     def command_backup(self):
-        args = ["scp", self.filename, self.hostdest]
-        p = subprocess.Popen(args, stdin = subprocess.PIPE, stderr = subprocess.PIPE, close_fds = True)
-        stdout, stderr = p.communicate(None)
-        stderr = stderr.rstrip()
-        if stderr:
-            print(stderr)
-            print("Backup Failed!")
-            exit(1)
-        print("Backup OK")
+        self._backup(self.hostdest)
+
+    def command_restore(self):
+        self._restore(self.hostsrc)
+
+    def command_quick_backup(self):
+        self._backup(self.backup_location)
+
+    def command_quick_restore(self):
+        self._restore(self.backup_location)
 
     def run(self):
         if self.command == "backup":
             self.command_backup()
+        elif self.command == "restore":
+            self.command_restore()
+        elif self.command == "quick_backup":
+            self.command_quick_backup()
+        elif self.command == "quick_restore":
+            self.command_quick_restore()
         else:
             raw_bdd = self.load_raw_bdd()
             bdd = self.parse_raw(raw_bdd)

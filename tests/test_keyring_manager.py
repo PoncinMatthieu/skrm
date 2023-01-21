@@ -57,8 +57,12 @@ class TestKeyringManager(unittest.TestCase):
         self.assertEqual(keyring_manager.filename, fake_filename2)
 
     def _clean_bdd(self):
-        if os.path.exists(self.bdd_filename):
-            os.remove(self.bdd_filename)
+        self._clean_file(self.bdd_filename)
+
+    @staticmethod
+    def _clean_file(f):
+        if os.path.exists(f):
+            os.remove(f)
 
     def _get_bdd(self):
         keyring_manager = KeyringManager("", self.bdd_filename, self.default_arguments + ["--get"])
@@ -167,15 +171,54 @@ class TestKeyringManager(unittest.TestCase):
         new_bdd = self._get_bdd()
         self.assertEqual(new_bdd[1][-1].decode('utf8'), new_key)
 
-    def test_command_backup(self):
+    def test_command_backup_and_restore(self):
         self.test_command_add_multiple()
 
         backup_dest = "fake_dest"
+        self._clean_file(backup_dest)
+
         keyring_manager = KeyringManager("", self.bdd_filename, self.default_arguments + ["--backup=" + backup_dest])
         self.assertEqual(keyring_manager.command, "backup")
         self.assertEqual(keyring_manager.hostdest, backup_dest)
+        keyring_manager.run()
 
-        with self.assertRaises(SystemExit) as cm:
-            keyring_manager.run()
-        self.assertEqual(cm.exception.code, 1)
+        # verify the backup is created
+        assert os.path.exists(backup_dest)
 
+        # cleanup db and then do a restore
+        self._clean_bdd()
+        assert not os.path.exists(self.bdd_filename)
+
+        keyring_manager = KeyringManager("", self.bdd_filename, self.default_arguments + ["--restore=" + backup_dest])
+        self.assertEqual(keyring_manager.command, "restore")
+        self.assertEqual(keyring_manager.hostsrc, backup_dest)
+        keyring_manager.run()
+
+        # bdd is restored
+        assert os.path.exists(self.bdd_filename)
+
+    def test_command_quick_backup_and_restore(self):
+        self.test_command_add_multiple()
+
+        backup_dest = "fake_dest"
+        self._clean_file(backup_dest)
+
+        keyring_manager = KeyringManager("", self.bdd_filename, self.default_arguments + ["-b"])
+        keyring_manager.backup_location = "fake_dest"
+        self.assertEqual(keyring_manager.command, "quick_backup")
+        keyring_manager.run()
+
+        # verify the backup is created
+        assert os.path.exists(backup_dest)
+
+        # cleanup db and then do a restore
+        self._clean_bdd()
+        assert not os.path.exists(self.bdd_filename)
+
+        keyring_manager = KeyringManager("", self.bdd_filename, self.default_arguments + ["-r"])
+        keyring_manager.backup_location = "fake_dest"
+        self.assertEqual(keyring_manager.command, "quick_restore")
+        keyring_manager.run()
+
+        # bdd is restored
+        assert os.path.exists(self.bdd_filename)

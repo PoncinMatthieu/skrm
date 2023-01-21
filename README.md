@@ -36,9 +36,14 @@ User Prefs
 ----------
 skrm uses an optional configuration file to avoid you setting every options in the command line.
 Here is an exemple of userpref file that should be placed in '~/.skrm/user.prefs':
+```
+File=/home/ponpon/.skrm/bdd.gpg
+recipient=Poncin Matthieu
+backup_location=backup_host:~/.skrm/bdd.gpg
+auto_backup=True
+```
 
-    File=/home/ponpon/.skrm/bdd.gpg
-    recipient=Poncin Matthieu
+With auto_backup set to True, secrets will be backed-up to the set backup_location everytime you add or update secrets.
 
 
 Usage
@@ -52,6 +57,8 @@ Usage
         -g, --get: Return keyrings matching strictly the given tags. This option is used by default. If a keyId is selected, a get or a search return only the keyring matching the keyId.
         -s, --search: Return keyrings matching the given tags (tags are interpreted as a regex expression).
         -c, --clip: Copy the key of the last matched keyring from a get or a search into the clipboard using xclip. Nothing will be printed out to the shell.
+        -b, --quick-backup: backup bdd file to location in user.prefs.
+        -r, --quick-restore: restore backup from location in user.prefs. YOU WILL LOOSE LOCAL DATA IF YOUR BACKUP IS CORRUPTED!
     COMMANDS:
         --file=[FILENAME]: use the given file to read/store keyrings.
         --recipient=[USER_ID_NAME]: set the user id name for gpg to get the key and encrypt the file.
@@ -61,6 +68,7 @@ Usage
         --remove: remove the selected key.
         --update=[KEY]: update the selected key.
         --backup=[HOSTDEST]: scp the bdd file to the given host destination.
+        --restore=[HOSTSRC]: scp the bdd file from the given host destination. YOU WILL LOOSE LOCAL DATA IF YOUR BACKUP IS CORRUPTED!
     TAGS:
         A list of strings to define tags you want to use for any commands keyring related management.
 
